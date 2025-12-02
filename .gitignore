@@ -1,0 +1,12 @@
+/ros_ws
+/calib_ws/build
+/calib_ws/log
+/calib_ws/install
+/calib_ws/src/data
+
+
+# Ignore these files
+*.mcap
+*.bag
+*.bag.active
+*.zip

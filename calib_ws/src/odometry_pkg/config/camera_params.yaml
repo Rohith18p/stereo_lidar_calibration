@@ -1,0 +1,40 @@
+visual_odometry:
+  ros__parameters:
+    # Image topics
+    left_image_topic: "/cam_sync/cam0/image_raw/debayered"
+    right_image_topic: "/cam_sync/cam1/image_raw/debayered"
+    
+    # Camera 0 (left) intrinsics
+    cam0_fx: 1468.93007186
+    cam0_fy: 1471.81884863
+    cam0_cx: 631.85246618
+    cam0_cy: 525.95317983
+    cam0_distortion: [-0.22513578, 0.17282213, 0.00027845, -0.00043702]
+    
+    # Camera 1 (right) intrinsics
+    cam1_fx: 1470.15663378
+    cam1_fy: 1473.07927852
+    cam1_cx: 643.94572844
+    cam1_cy: 507.7164811
+    cam1_distortion: [-0.23775883, 0.20650801, 0.00021593, -0.00022204]
+    
+    # Baseline transformation T_1_0 (cam1 relative to cam0)
+    # Quaternion [x, y, z, w]
+    baseline_quat: [0.00208869, 0.00136061, -0.0097347, 0.99994951]
+    # Translation [x, y, z] in meters
+    baseline_trans: [-0.22236458, -0.00353404, -0.00112897]
+    
+    # Algorithm parameters
+    publish_frequency: 10.0
+    max_features: 2000
+    min_matches: 50
+    min_3d_points: 20
+
+# LiDAR Odometry Parameters
+lidar_odometry:
+  ros__parameters:
+    pointcloud_topic: "/ouster/points"
+    publish_frequency: 10.0
+    max_iterations: 50
+    tolerance: 0.000001
+    max_correspondence_distance: 0.5
