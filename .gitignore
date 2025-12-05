@@ -2,8 +2,8 @@
 /calib_ws/build
 /calib_ws/log
 /calib_ws/install
-/calib_ws/src/data
-
+/calib_ws/src/data/lidar_camera_bag3_EXP_Floor_7_fixed
+/calib_ws/src/data/store_v1
 
 # Ignore these files
 *.mcap

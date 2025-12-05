@@ -10,10 +10,12 @@ import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
 import message_filters
+import csv
+import os
 
 class VisualOdometryNode(Node):
     def __init__(self):
-        super().__init__('visual_odometry_node')
+        super().__init__('visual_odom_node')
         
         # Declare parameters with default values from calibration
         # Camera topics
@@ -43,6 +45,8 @@ class VisualOdometryNode(Node):
         self.declare_parameter('max_features', 2000)
         self.declare_parameter('min_matches', 50)
         self.declare_parameter('min_3d_points', 20)
+        self.declare_parameter('visual_enable_csv', False)
+        self.declare_parameter('visual_csv_path', '/ros_ws/src/data/store_v1/visual_odom.csv')
         
         # Get parameter values
         left_topic = self.get_parameter('left_image_topic').value
@@ -51,6 +55,26 @@ class VisualOdometryNode(Node):
         self.max_features = self.get_parameter('max_features').value
         self.min_matches = self.get_parameter('min_matches').value
         self.min_3d_points = self.get_parameter('min_3d_points').value
+        self.visual_enable_csv = self.get_parameter('visual_enable_csv').value
+        self.visual_csv_path = self.get_parameter('visual_csv_path').value
+        
+        # CSV Logging Setup
+        if self.visual_enable_csv:
+            self.csv_file_path = self.visual_csv_path
+            self.csv_file = open(self.csv_file_path, 'a', newline='')
+            self.csv_writer = csv.writer(self.csv_file)
+            
+            # Write header if file is empty
+            if os.path.getsize(self.csv_file_path) == 0:
+                header = ['timestamp', 'frame_id', 'child_frame_id', 
+                          'pos_x', 'pos_y', 'pos_z', 
+                          'orient_x', 'orient_y', 'orient_z', 'orient_w',
+                          'linear_x', 'linear_y', 'linear_z',
+                          'angular_x', 'angular_y', 'angular_z']
+                self.csv_writer.writerow(header)
+                self.csv_file.flush()
+            
+            self.get_logger().info(f'CSV logging enabled: {self.csv_file_path}')
         
         # Camera 0 (left) parameters
         self.cam0_fx = self.get_parameter('cam0_fx').value
@@ -263,6 +287,32 @@ class VisualOdometryNode(Node):
         odom.twist.covariance = [0.1] * 36
         
         self.odom_pub.publish(odom)
+
+        # Write to CSV
+        if self.visual_enable_csv:
+            try:
+                row = [
+                    f"{odom.header.stamp.sec}.{odom.header.stamp.nanosec:09d}",
+                    odom.header.frame_id,
+                    odom.child_frame_id,
+                    odom.pose.pose.position.x,
+                    odom.pose.pose.position.y,
+                    odom.pose.pose.position.z,
+                    odom.pose.pose.orientation.x,
+                    odom.pose.pose.orientation.y,
+                    odom.pose.pose.orientation.z,
+                    odom.pose.pose.orientation.w,
+                    odom.twist.twist.linear.x,
+                    odom.twist.twist.linear.y,
+                    odom.twist.twist.linear.z,
+                    odom.twist.twist.angular.x,
+                    odom.twist.twist.angular.y,
+                    odom.twist.twist.angular.z
+                ]
+                self.csv_writer.writerow(row)
+                self.csv_file.flush()
+            except Exception as e:
+                self.get_logger().error(f"Failed to write to CSV: {e}")
         self.get_logger().info(f'Published visual odometry: pos=[{position[0]:.2f}, {position[1]:.2f}, {position[2]:.2f}]')
 
 def main(args=None):

@@ -1,4 +1,4 @@
-visual_odometry:
+visual_odom_node:
   ros__parameters:
     # Image topics
     left_image_topic: "/cam_sync/cam0/image_raw/debayered"
@@ -30,11 +30,16 @@ visual_odometry:
     min_matches: 50
     min_3d_points: 20
 
+    visual_enable_csv: True
+    visual_csv_path: "/home/ros/ros_ws/src/data/store_v1/visual_odom.csv" 
+
 # LiDAR Odometry Parameters
-lidar_odometry:
+lidar_odom_node:
   ros__parameters:
     pointcloud_topic: "/ouster/points"
     publish_frequency: 10.0
     max_iterations: 50
     tolerance: 0.000001
     max_correspondence_distance: 0.5
+    lidar_enable_csv: True
+    lidar_csv_path: "/home/ros/ros_ws/src/data/store_v1/lidar_odom.csv"
