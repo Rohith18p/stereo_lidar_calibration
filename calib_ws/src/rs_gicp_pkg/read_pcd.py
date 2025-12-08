@@ -33,8 +33,11 @@ def read_bin(file_path, max_dist=50.0, fov_deg=60.0):
         angles = np.arctan2(points[:, 1], points[:, 0]) * 180.0 / np.pi  # Convert to degrees
         fov_mask = np.abs(angles) <= fov_deg
         
+        # Filter by XY plane (keep only points within ±50m in X and Y)
+        xy_mask = (np.abs(points[:, 0]) <= 50.0) & (np.abs(points[:, 1]) <= 50.0)
+        
         # Combine masks
-        mask = mask & fov_mask
+        mask = mask & fov_mask & xy_mask
         
         points = points[mask]
         intensities = scan[mask, 3]

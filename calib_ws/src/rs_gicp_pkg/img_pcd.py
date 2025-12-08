@@ -8,8 +8,8 @@ import os
 # Camera Intrinsics (Please replace with your actual values)
 FX = 718.856
 FY = 718.856
-CX = 607.1928
-CY = 185.2157
+CX = 609.55
+CY = 172.85
 
 # Stereo Baseline (in meters)
 BASELINE = 0.5372
@@ -37,7 +37,7 @@ def compute_point_cloud(left_img_path, right_img_path, fx=FX, fy=FY, cx=CX, cy=C
         print("Error: Could not read images.")
         return None
 
-    # Compute Disparity
+    # Compute Disparity with improved parameters
     stereo = cv2.StereoSGBM_create(
         minDisparity=MIN_DISPARITY,
         numDisparities=NUM_DISPARITIES,
@@ -45,9 +45,10 @@ def compute_point_cloud(left_img_path, right_img_path, fx=FX, fy=FY, cx=CX, cy=C
         P1=8 * 3 * BLOCK_SIZE**2,
         P2=32 * 3 * BLOCK_SIZE**2,
         disp12MaxDiff=1,
-        uniquenessRatio=10,
-        speckleWindowSize=100,
-        speckleRange=32
+        uniquenessRatio=15,  # Increased from 10 for more reliable matches
+        speckleWindowSize=150,  # Increased from 100 to filter more noise
+        speckleRange=2,  # Decreased from 32 for stricter filtering
+        mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY  # Better quality mode
     )
 
     print("Computing disparity map...")
@@ -68,19 +69,29 @@ def compute_point_cloud(left_img_path, right_img_path, fx=FX, fy=FY, cx=CX, cy=C
         [0, 0, -1.0/baseline, 0] # 
     ])
 
-    print("Reprojecting to 3D...")
-    points_3d = cv2.reprojectImageTo3D(disparity, Q)
+    # Ensure inputs are contiguous
+    Q = np.ascontiguousarray(Q)
+    disparity = np.ascontiguousarray(disparity)
+
+    print("Reprojecting to 3D... (v3 - Explicit Copy)")
+    _points_3d = cv2.reprojectImageTo3D(disparity, Q)
+    
+    # Force a deep copy to ensure we have a writable, contiguous array
+    points_3d = np.array(_points_3d, copy=True)
     
     # Fix mirror image - flip X axis
+    # Now we are 100% sure points_3d is writable
     points_3d[:, :, 0] = -points_3d[:, :, 0]
+    
+    points_3d_fixed = points_3d
     
     # Filter out invalid points (disparity <= 0 or too far)
     # Also filter by max_dist
-    dists = np.linalg.norm(points_3d, axis=2)
+    dists = np.linalg.norm(points_3d_fixed, axis=2)
     mask = (disparity > 0) & (dists < max_dist)
     
     # Extract valid points and colors
-    output_points = points_3d[mask]
+    output_points = points_3d_fixed[mask]
     output_colors = imgL_color[mask]
     
     # Convert BGR to RGB

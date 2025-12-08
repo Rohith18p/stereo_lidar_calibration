@@ -6,12 +6,13 @@ import img_pcd
 import read_pcd
 
 # --- Configuration ---
-VOXEL_SIZE = 0.5  # Downsampling voxel size (meters)
-MAX_CORRESPONDENCE_DISTANCE = 1.0 # Max distance for GICP correspondence
-MAX_ITERATIONS = 50
-TOLERANCE = 1e-6
+VOXEL_SIZE = 0.5  # Downsampling voxel size (meters) - smaller for more detail
+MAX_CORRESPONDENCE_DISTANCE = 1.0 # Max distance for GICP correspondence - increased for large translation
+MAX_ITERATIONS = 100  # More iterations for convergence
+TOLERANCE = 1e-6  # Tighter tolerance for better convergence
 MAX_DIST = 50.0 # Max distance for points (meters)
 FOV_DEG = 60.0  # Half-angle FOV in degrees (60 = 120° total sweep)
+USE_KNOWN_TRANSLATION = False # If True, use known translation as initial guess
 # ---------------------
 
 def preprocess_pcd(pcd, voxel_size):
@@ -66,6 +67,25 @@ def crop_stereo(pcd):
     print(f"Cropped Stereo points: {len(points)} -> {len(pcd_cropped.points)}")
     return pcd_cropped
 
+def filter_stereo_xy(pcd, initial_transform):
+    """
+    Filters stereo point cloud to keep only points within ±50m in X and Y 
+    when transformed to LiDAR frame.
+    """
+    print("Filtering Stereo point cloud by XY bounds in LiDAR frame...")
+    points = np.asarray(pcd.points)
+    
+    # Transform points to LiDAR frame
+    points_hom = np.hstack([points, np.ones((len(points), 1))])  # Homogeneous coordinates
+    points_lidar = (initial_transform @ points_hom.T).T[:, :3]
+    
+    # Filter by XY bounds in LiDAR frame
+    mask = (np.abs(points_lidar[:, 0]) <= 50.0) & (np.abs(points_lidar[:, 1]) <= 50.0)
+    
+    pcd_filtered = pcd.select_by_index(np.where(mask)[0])
+    print(f"Filtered Stereo points: {len(points)} -> {len(pcd_filtered.points)}")
+    return pcd_filtered
+
 def get_initial_guess():
     """
     Returns the initial transformation matrix from Camera Optical Frame to LiDAR Frame.
@@ -77,6 +97,8 @@ def get_initial_guess():
     Plus user-specified rotations in LiDAR frame:
     - Rotate 180° around LiDAR X-axis
     - Rotate 180° around LiDAR Z-axis
+    
+    Optionally uses known translation if USE_KNOWN_TRANSLATION is True.
     """
     from scipy.spatial.transform import Rotation as R
     
@@ -99,8 +121,19 @@ def get_initial_guess():
     T_rot = np.eye(4)
     T_rot[:3, :3] = r_combined.as_matrix()
     
-    # Final transform
+    # Final transform (rotation only)
     T_final = T_rot @ T_base
+    
+    # Optionally add known translation
+    if USE_KNOWN_TRANSLATION:
+        # Known translation from Velodyne to Camera (inverted to Camera to Velodyne)
+        # Original: T_cam_velo = [-4.069766e-03, -7.631618e-02, -2.717806e-01]
+        # We need to apply this in the LiDAR frame after rotation
+        known_translation = np.array([-4.069766e-03, -7.631618e-02, -2.717806e-01])
+        # Since this is T_cam_velo, we need to invert it for T_velo_cam
+        # But we only have translation, so we negate it
+        T_final[:3, 3] = -known_translation
+        print("Using known translation as initial guess")
     
     return T_final
 
@@ -272,12 +305,21 @@ def main():
     initial_transform = get_initial_guess()
     print("Initial Transform (Camera -> LiDAR):")
     print(initial_transform)
+    
+    # 3.5. Filter stereo points by XY bounds in LiDAR frame
+    print("\n--- Filtering Stereo by XY Bounds ---")
+    pcd_stereo = filter_stereo_xy(pcd_stereo, initial_transform)
 
-    # 4. Run GICP
+    # 4. Downsample & Normals for GICP
+    print("\n--- Preprocessing for GICP ---")
+    pcd_stereo_down = preprocess_pcd(pcd_stereo, VOXEL_SIZE)
+    pcd_lidar_down = preprocess_pcd(pcd_lidar, VOXEL_SIZE)
+
+    # 5. Run GICP
     print("\n--- Running GICP ---")
     final_transform = execute_gicp(pcd_stereo_down, pcd_lidar_down, VOXEL_SIZE)
 
-    # 5. Print Final Extrinsic Matrix
+    # 6. Print Final Extrinsic Matrix
     print("\n" + "="*60)
     print("FINAL EXTRINSIC CALIBRATION MATRIX")
     print("="*60)
@@ -304,7 +346,7 @@ def main():
     print(inverse_transform[:3, 3])
     print("\n" + "="*60)
 
-    # 6. Visualize final alignment
+    # 7. Visualize final alignment
     print("\n--- Visualizing Final Alignment ---")
     visualize_registration(pcd_stereo, pcd_lidar, final_transform)
 
