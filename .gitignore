@@ -3,9 +3,11 @@
 /calib_ws/log
 /calib_ws/install
 /calib_ws/src/data
+/calib_env/
 
 # Ignore these files
 *.mcap
 *.bag
 *.bag.active
 *.zip
+*.pyc
