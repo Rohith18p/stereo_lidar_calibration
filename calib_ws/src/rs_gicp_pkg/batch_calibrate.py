@@ -26,7 +26,7 @@ importlib.reload(read_pcd)
 DEFAULT_LEFT_DIR = "/home/ros/ros_ws/src/data/2011_09_26_drive_0005_sync/2011_09_26/2011_09_26_drive_0005_sync/image_02/data"
 DEFAULT_RIGHT_DIR = "/home/ros/ros_ws/src/data/2011_09_26_drive_0005_sync/2011_09_26/2011_09_26_drive_0005_sync/image_03/data"
 DEFAULT_LIDAR_DIR = "/home/ros/ros_ws/src/data/2011_09_26_drive_0005_sync/2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/data"
-DEFAULT_OUTPUT_CSV = "/home/ros/ros_ws/src/archive/rs_gicp_calibration_results_v1.csv"
+DEFAULT_OUTPUT_CSV = "/home/ros/ros_ws/src/archive/rs_gicp_calibration_results_v2.csv"
 DEFAULT_MAX_FRAMES = 25
 # ---------------------------------------------------
 
